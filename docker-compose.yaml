@@ -1,0 +1,116 @@
+name: rustdesk
+
+services:
+  hbbr:
+    image: ghcr.io/underhax/rustdesk-server-docker:${RUSTDESK_VERSION:-latest}
+    container_name: hbbr
+    hostname: hbbr
+    restart: unless-stopped
+    command: ["hbbr"]
+    ipc: "none"
+    user: "${APP_UID}:${APP_GID}"
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add: []
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256m
+          pids: 100
+    mem_reservation: 32m
+    ports:
+      - "${HOST_IP}:21117:21117"
+    tmpfs:
+      - /tmp:mode=1777,noexec,nosuid,nodev,size=32m
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    secrets:
+      - source: id_ed25519_pub
+        target: id_ed25519.pub
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/probe", "hbbr"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - rustdesk
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  hbbs:
+    image: ghcr.io/underhax/rustdesk-server-docker:${RUSTDESK_VERSION:-latest}
+    container_name: hbbs
+    hostname: hbbs
+    restart: unless-stopped
+    command: ["hbbs"]
+    ipc: "none"
+    user: "${APP_UID}:${APP_GID}"
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add: []
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128m
+          pids: 100
+    mem_reservation: 32m
+    environment:
+      - ALWAYS_USE_RELAY=${ALWAYS_USE_RELAY:-Y}
+      - RUST_LOG=${RUST_LOG:-error}
+    ports:
+      - "${HOST_IP}:21115:21115"
+      - "${HOST_IP}:21116:21116"
+      - "${HOST_IP}:21116:21116/udp"
+    tmpfs:
+      - /tmp:mode=1777,noexec,nosuid,nodev,size=32m
+    volumes:
+      - ./data:/data:rw,noexec,nosuid,nodev
+      - /etc/localtime:/etc/localtime:ro
+    secrets:
+      - id_ed25519
+      - source: id_ed25519_pub
+        target: id_ed25519.pub
+      - rd_relay_servers
+    depends_on:
+      hbbr:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/probe", "hbbs"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - rustdesk
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  rustdesk:
+    name: rustdesk
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "false"
+
+secrets:
+  id_ed25519:
+    file: ./secrets/id_ed25519
+  id_ed25519_pub:
+    file: ./secrets/id_ed25519.pub
+  rd_relay_servers:
+    file: ./secrets/rd_relay_servers.txt
