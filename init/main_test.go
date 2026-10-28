@@ -558,7 +558,7 @@ func TestIsInvalidEnvKeyRune(t *testing.T) {
 		{name: "digit_nine", char: '9', expected: false},
 		{name: "underscore", char: '_', expected: false},
 		{name: "lowercase_a", char: 'a', expected: true},
-		{name: "hyphen", char: '-', expected: true},
+		{name: "hyphen", char: '-', expected: false},
 		{name: "dot", char: '.', expected: true},
 		{name: "equals", char: '=', expected: true},
 		{name: "space", char: ' ', expected: true},
@@ -580,13 +580,13 @@ func TestSecretEnvKey(t *testing.T) {
 		wantKey   string
 		expectErr bool
 	}{
-		{name: "simple_relay", fileName: "rd_relay_servers", wantKey: "RELAY_SERVERS", expectErr: false},
+		{name: "simple_relay", fileName: "rd_relay-servers", wantKey: "RELAY-SERVERS", expectErr: false},
+		{name: "underscore_relay", fileName: "rd_relay_servers", wantKey: "RELAY_SERVERS", expectErr: false},
 		{name: "rendezvous_key", fileName: "rd_rendezvous_servers", wantKey: "RENDEZVOUS_SERVERS", expectErr: false},
 		{name: "uppercase_input", fileName: "RD_ALWAYS_USE_RELAY", wantKey: "ALWAYS_USE_RELAY", expectErr: false},
 		{name: "digits_and_underscores", fileName: "rd_port_21116_ready", wantKey: "PORT_21116_READY", expectErr: false},
 		{name: "empty_after_prefix", fileName: rustdeskSecretPrefix, wantKey: "", expectErr: true},
 		{name: "short_length", fileName: "r", wantKey: "", expectErr: true},
-		{name: "contains_hyphen", fileName: "rd_relay-servers", wantKey: "", expectErr: true},
 		{name: "contains_dot", fileName: "rd_domain.name", wantKey: "", expectErr: true},
 		{name: "contains_equal", fileName: "rd_key=value", wantKey: "", expectErr: true},
 		{name: "contains_space", fileName: "rd_key name", wantKey: "", expectErr: true},
@@ -640,7 +640,7 @@ func TestDecodeBase64Key(t *testing.T) {
 func TestConfigureDynamicSecrets(t *testing.T) {
 	tempDir := t.TempDir()
 
-	if err := os.WriteFile(filepath.Join(tempDir, "rd_relay_servers"), []byte("relay.example.org\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(tempDir, "rd_relay-servers"), []byte("relay.example.org\n"), 0o600); err != nil {
 		t.Fatalf("writing secret: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(tempDir, "rd_empty"), []byte("   \n"), 0o600); err != nil {
@@ -650,14 +650,14 @@ func TestConfigureDynamicSecrets(t *testing.T) {
 		t.Fatalf("writing secret: %v", err)
 	}
 
-	names := []string{"ignored_secret", "rd_empty", "rd_relay_servers"}
+	names := []string{"ignored_secret", "rd_empty", "rd_relay-servers"}
 	env, err := configureDynamicSecrets([]string{"INITIAL=true"}, tempDir, names)
 	if err != nil {
 		t.Fatalf("unexpected error configuring dynamic secrets: %v", err)
 	}
 
-	if !slices.Contains(env, "RELAY_SERVERS=relay.example.org") {
-		t.Fatal("expected RELAY_SERVERS to be configured")
+	if !slices.Contains(env, "RELAY-SERVERS=relay.example.org") {
+		t.Fatal("expected RELAY-SERVERS to be configured")
 	}
 	if slices.ContainsFunc(env, func(s string) bool { return strings.HasPrefix(s, "EMPTY=") }) {
 		t.Fatal("expected empty secret not to be set")
@@ -669,7 +669,7 @@ func TestConfigureDynamicSecrets(t *testing.T) {
 	}
 
 	origReadFile := readFile
-	mockTargetSecretPath = filepath.Join(tempDir, "rd_relay_servers")
+	mockTargetSecretPath = filepath.Join(tempDir, "rd_relay-servers")
 	readFile = mockConditionalReadFile
 	t.Cleanup(func() {
 		readFile = origReadFile
@@ -1018,7 +1018,7 @@ func TestPrepareEnvironment(t *testing.T) {
 	}
 
 	invalidDynamicDir := t.TempDir()
-	if err := os.WriteFile(filepath.Clean(filepath.Join(invalidDynamicDir, "rd_invalid-key")), []byte("val"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Clean(filepath.Join(invalidDynamicDir, "rd_invalid.key")), []byte("val"), 0o600); err != nil {
 		t.Fatalf("writing invalid dynamic secret: %v", err)
 	}
 	if _, err := PrepareEnvironment(nil, invalidDynamicDir, targetHbbs); err == nil {

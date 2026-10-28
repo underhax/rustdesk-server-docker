@@ -22,6 +22,8 @@ services:
           memory: 256m
           pids: 100
     mem_reservation: 32m
+    environment:
+      - RUST_LOG=${RUST_LOG:-error}
     ports:
       - "${HOST_IP}:21117:21117"
     tmpfs:
@@ -82,7 +84,7 @@ services:
       - id_ed25519
       - source: id_ed25519_pub
         target: id_ed25519.pub
-      - rd_relay_servers
+      - rd_relay-servers
     depends_on:
       hbbr:
         condition: service_healthy
@@ -112,5 +114,5 @@ secrets:
     file: ./secrets/id_ed25519
   id_ed25519_pub:
     file: ./secrets/id_ed25519.pub
-  rd_relay_servers:
-    file: ./secrets/rd_relay_servers.txt
+  rd_relay-servers:
+    file: ./secrets/rd_relay-servers.txt

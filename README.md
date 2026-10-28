@@ -6,13 +6,14 @@
 [![GitHub repo size](https://img.shields.io/github/repo-size/underhax/rustdesk-server-docker)](https://github.com/underhax/rustdesk-server-docker)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Hardened, containerized deployment architecture for [RustDesk Server](https://github.com/rustdesk/rustdesk-server) (`hbbs` and `hbbr`) packaged in a minimal `scratch` runtime with host Discretionary Access Control (DAC) boundaries, Docker secret ingestion via a dedicated Go init supervisor, in-memory credential scrubbing, and a standalone binary healthcheck probe.
+Hardened, containerized deployment architecture for [RustDesk Server](https://github.com/rustdesk/rustdesk-server) (`hbbs` and `hbbr`) packaged in a minimal `scratch` runtime with host Discretionary Access Control (DAC) boundaries, built-in Ed25519 keypair generation and Docker secret ingestion via a dedicated Go init supervisor, in-memory credential scrubbing, and a standalone binary healthcheck probe.
 
 ## Architecture Highlights
 
 This deployment packages RustDesk Server into an isolated, defense-in-depth runtime environment:
 
-* Scratch runtime: Built on an empty scratch base image containing only upstream RustDesk binaries, system CA certificates, and static Go helpers for process supervision, secret ingestion, and TCP health checks. The runtime includes no shell, package manager, or system utilities.
+* Scratch runtime: Built on an empty scratch base image containing only upstream RustDesk binaries, system CA certificates, and static Go helpers for process supervision, keypair generation, secret ingestion, and TCP health checks. The runtime includes no shell, package manager, or system utilities.
+* Built-in key generation: Generates canonical Ed25519 keypairs directly into the mounted secrets directory via a dedicated `keygen` command.
 * In-memory secret ingestion: Ed25519 keys and configuration secrets are ingested directly from Docker secrets into process memory rather than stored in the application data directory. Cryptographic key sizes and keypair matching are validated before keys are passed to the daemons.
 * Memory scrubbing: Following daemon startup and TCP port readiness verification, the environment block in process memory is zeroed, preventing credential exposure through process inspection.
 * Role-based secret separation: The relay daemon requires only the public key, completely eliminating exposure of the private key inside the relay container.
@@ -32,7 +33,7 @@ Production directory layout on the host (`/home/rustdesk`):
 ├── secrets/                                                   # Docker secrets directory (root:rustdesk 0750)
 │   ├── id_ed25519                                             # Ed25519 private key (64 bytes Base64)
 │   ├── id_ed25519.pub                                         # Ed25519 public key (32 bytes Base64)
-│   └── rd_relay_servers.txt                                   # Optional: Relay server addresses
+│   └── rd_relay-servers.txt                                   # Optional: Relay server addresses
 └── data/                                                      # hbbs persistent storage (db_v2.sqlite3)
 ```
 
@@ -131,10 +132,10 @@ sudo docker run --rm -v /home/rustdesk/secrets:/secrets \
 
 **Relay server address:**
 
-Populate `rd_relay_servers.txt` with your public domain name or IP address using a text editor to avoid leaving sensitive network infrastructure in your shell history:
+Populate `rd_relay-servers.txt` with your public domain name or IP address using a text editor to avoid leaving sensitive network infrastructure in your shell history:
 
 ```bash
-sudo nano /home/rustdesk/secrets/rd_relay_servers.txt
+sudo nano /home/rustdesk/secrets/rd_relay-servers.txt
 ```
 
 **Enforce DAC permissions:**

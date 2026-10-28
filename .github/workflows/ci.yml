@@ -110,7 +110,7 @@ jobs:
           sed -i 's/^APP_GID=.*/APP_GID=1000/' .env
           sed -i 's/^HOST_IP=.*/HOST_IP=192.0.2.1/' .env
           mkdir -p secrets
-          touch secrets/id_ed25519 secrets/id_ed25519.pub secrets/rd_relay_servers.txt
+          touch secrets/id_ed25519 secrets/id_ed25519.pub secrets/rd_relay-servers.txt
 
       - name: Validate Docker Compose file
         run: |

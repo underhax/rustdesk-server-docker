@@ -419,7 +419,7 @@ func hasRustdeskSecretPrefix(name string) bool {
 }
 
 func isInvalidEnvKeyRune(r rune) bool {
-	return (r < 'A' || r > 'Z') && (r < '0' || r > '9') && r != '_'
+	return (r < 'A' || r > 'Z') && (r < '0' || r > '9') && r != '_' && r != '-'
 }
 
 func secretEnvKey(name string) (string, error) {
